@@ -1,7 +1,6 @@
 #include "application.hpp"
-#include "renderer.hpp"
+#include "glrenderer.hpp"
 
-#include "gl.h"
 #include <SDL3/SDL.h>
 #include <cmath>
 #include <iostream>
@@ -34,24 +33,6 @@ bool Application::setup() {
         return false;
     }
 
-    // setup OpenGL context
-    _glCtx = SDL_GL_CreateContext(_window);
-    if (_glCtx == nullptr || !SDL_GL_MakeCurrent(_window, _glCtx)) {
-        std::cerr << "SDL Error: " << SDL_GetError() << std::endl;
-        return false;
-    }
-    switch (_swap) {
-        case SwapInterval::OFF:            SDL_GL_SetSwapInterval(0); break;
-        case SwapInterval::ADAPTIVE_VSYNC: if (SDL_GL_SetSwapInterval(-1)) { break; }
-        // fallthrough to vsync if adaptive is not available
-        case SwapInterval::VSYNC:          SDL_GL_SetSwapInterval(1); break;
-    }
-
-    if (gladLoadGL(SDL_GL_GetProcAddress) == 0) {
-        std::cerr << "Failed to initialize OpenGL context" << std::endl;
-        return false;
-    }
-
     // work out the content scale for scaling mouse input
     const auto calculate_content_size_and_scale = [this]() {
         int winWidth, winHeight;
@@ -63,7 +44,18 @@ bool Application::setup() {
     };
 
     // setup rendering
-    _renderer = std::make_unique<gfx::Renderer>(gfx::colorf::black());
+    _renderer = std::unique_ptr<gfx::Renderer>(new gfx::GLRenderer(_window, gfx::colorf::black()));
+    if (!_renderer->init_ok()) {
+        return false;
+    }
+
+    switch (_swap) {
+        case SwapInterval::OFF:            SDL_GL_SetSwapInterval(0); break;
+        case SwapInterval::ADAPTIVE_VSYNC: if (SDL_GL_SetSwapInterval(-1)) { break; }
+        // fallthrough to vsync if adaptive is not available
+        case SwapInterval::VSYNC:          SDL_GL_SetSwapInterval(1); break;
+    }
+
     calculate_content_size_and_scale();
     _renderer->viewport(_frameWidth, _frameHeight);
 
@@ -73,12 +65,7 @@ bool Application::setup() {
 }
 
 void Application::shutdown() {
-    _renderer.reset();  // ensure the renderer is deleted before deleting context
-    if (_glCtx != nullptr) {
-        SDL_GL_MakeCurrent(nullptr, nullptr);
-        SDL_GL_DestroyContext(_glCtx);
-        _glCtx = nullptr;
-    }
+    _renderer.reset();  // delete renderer before destroying the window
     if (_window != nullptr) {
         SDL_DestroyWindow(_window);
         _window = nullptr;

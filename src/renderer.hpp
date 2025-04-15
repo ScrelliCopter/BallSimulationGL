@@ -10,6 +10,8 @@
 #include <cassert>
 #include <type_traits>
 
+typedef struct SDL_Window SDL_Window;
+
 namespace gfx {
     struct Vertex {
         vec2f position;
@@ -119,18 +121,19 @@ namespace gfx {
 
     class Renderer {
     public:
-        Renderer(const colorf& clear = colorf::black());
-        virtual ~Renderer();
+        virtual ~Renderer() = default;
 
-        void viewport(int width, int height);
+        virtual bool init_ok() = 0;
 
-        void new_frame();
+        virtual void viewport(int width, int height) = 0;
 
-        Mesh create_mesh(std::span<const Vertex> vertices, std::span<const uint16_t> indices,
-            PrimitiveType mode = PrimitiveType::TRIANGLES);
-        void delete_mesh(Mesh& mesh);
+        virtual void new_frame() = 0;
 
-        void draw_mesh(Mesh& mesh, const Instance& instance);
-        void draw_mesh(Mesh& mesh, const std::span<const Instance> instances);
+        virtual Mesh create_mesh(std::span<const Vertex> vertices, std::span<const uint16_t> indices,
+            PrimitiveType mode = PrimitiveType::TRIANGLES) = 0;
+        virtual void delete_mesh(Mesh& mesh) = 0;
+
+        virtual void draw_mesh(Mesh& mesh, const Instance& instance) = 0;
+        virtual void draw_mesh(Mesh& mesh, const std::span<const Instance> instances) = 0;
     };
 }

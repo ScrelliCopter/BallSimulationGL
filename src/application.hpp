@@ -12,9 +12,6 @@ public:
     void frame(double deltaTime, void (*resultCallback)(double fps));
 };
 
-typedef struct SDL_Window SDL_Window;
-typedef struct SDL_GLContextState* SDL_GLContext;
-
 class Application {
 public:
     enum class SwapInterval {
@@ -55,7 +52,6 @@ private:
     const SwapInterval _swap;
 
     SDL_Window* _window = nullptr;
-    SDL_GLContext _glCtx = nullptr;
     std::unique_ptr<gfx::Renderer> _renderer;
     int _frameWidth, _frameHeight;
     vec2d _contentScale;

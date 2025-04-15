@@ -1,14 +1,30 @@
-#include "renderer.hpp"
+#include "glrenderer.hpp"
 
 #define GLAD_GL_IMPLEMENTATION
 #include "gl.h"
 #include <SDL3/SDL_opengl.h>
+#include <SDL3/SDL_video.h>
 
 #include <cassert>
+#include <iostream>
 
 using namespace gfx;
 
-Renderer::Renderer(const colorf& clear) {
+GLRenderer::GLRenderer(SDL_Window* window, const colorf& clear) {
+    // setup OpenGL context
+    _glCtx = SDL_GL_CreateContext(window);
+    if (_glCtx == nullptr || !SDL_GL_MakeCurrent(window, _glCtx)) {
+        std::cerr << "SDL Error: " << SDL_GetError() << std::endl;
+        return;
+    }
+
+    // load OpenGL functions
+    _glVersion = gladLoadGL(SDL_GL_GetProcAddress);
+    if (_glVersion == 0) {
+        std::cerr << "Failed to initialize OpenGL context" << std::endl;
+        return;
+    }
+
     glClearColor(clear.r, clear.g, clear.b, clear.a);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -18,11 +34,15 @@ Renderer::Renderer(const colorf& clear) {
     glLoadIdentity();
 }
 
-Renderer::~Renderer() {
+GLRenderer::~GLRenderer() {
+    if (_glCtx != nullptr) {
+        SDL_GL_MakeCurrent(nullptr, nullptr);
+        SDL_GL_DestroyContext(_glCtx);
+    }
 }
 
 
-void Renderer::viewport(int width, int height) {
+void GLRenderer::viewport(int width, int height) {
     glViewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -31,11 +51,11 @@ void Renderer::viewport(int width, int height) {
 }
 
 
-void Renderer::new_frame() {
+void GLRenderer::new_frame() {
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-Mesh Renderer::create_mesh(std::span<const Vertex> vertices, std::span<const uint16_t> indices, PrimitiveType mode) {
+Mesh GLRenderer::create_mesh(std::span<const Vertex> vertices, std::span<const uint16_t> indices, PrimitiveType mode) {
     GLuint bufferIds[2];
     glGenBuffers(2, bufferIds);
     glBindBuffer(GL_ARRAY_BUFFER, bufferIds[Mesh::VERTEX]);
@@ -58,7 +78,7 @@ Mesh Renderer::create_mesh(std::span<const Vertex> vertices, std::span<const uin
     return Mesh(mode, bufferIds[Mesh::VERTEX], bufferIds[Mesh::ELEMENT], static_cast<int32_t>(indices.size()));
 }
 
-void Renderer::delete_mesh(Mesh& mesh) {
+void GLRenderer::delete_mesh(Mesh& mesh) {
     if (mesh.valid()) {
         GLuint bufferIds[2] = { mesh.get_buffer(Mesh::VERTEX), mesh.get_buffer(Mesh::ELEMENT) };
         glDeleteBuffers(2, bufferIds);
@@ -112,7 +132,7 @@ static inline void gl_inner_unbind() {
     glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void Renderer::draw_mesh(Mesh& mesh, const Instance& instance) {
+void GLRenderer::draw_mesh(Mesh& mesh, const Instance& instance) {
     assert(mesh.valid());
 
     auto drawmode = gl_draw_mode(mesh);
@@ -123,7 +143,7 @@ void Renderer::draw_mesh(Mesh& mesh, const Instance& instance) {
     gl_inner_unbind();
 }
 
-void Renderer::draw_mesh(Mesh& mesh, std::span<const Instance> instances) {
+void GLRenderer::draw_mesh(Mesh& mesh, std::span<const Instance> instances) {
     assert(mesh.valid());
     assert(instances.data());
 

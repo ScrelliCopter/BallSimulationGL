@@ -15,8 +15,9 @@ add_library(BallSimulator
 set_property(TARGET BallSimulator PROPERTY CXX_STANDARD 20)
 
 add_executable(BallSimulatorGl MACOSX_BUNDLE WIN32
+    src/renderer.hpp
     src/gl.h
-    src/renderer.cpp src/renderer.hpp
+    src/glrenderer.cpp src/glrenderer.hpp
     src/application.cpp src/application.hpp
     src/ballsimulatorgl.cpp src/ballsimulatorgl.hpp
     src/main.cpp)
